@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// NewDumpMiddleware TODO
+// NewDumpMiddleware creates a new DumpMiddleware to call a function with the RoundtripDump objects.
 func NewDumpMiddleware(dumpAction func(*RoundtripDump)) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,7 @@ func NewDumpMiddleware(dumpAction func(*RoundtripDump)) func(next http.Handler) 
 	}
 }
 
-// NewDumpToLogMiddleware TODO
+// NewDumpToLogMiddleware creates a new DumpMiddleware to log the RoundtripDump objects as serialised json string.
 func NewDumpToLogMiddleware() func(next http.Handler) http.Handler {
 	return NewDumpMiddleware(func(dump *RoundtripDump) {
 		marshalledDump, _ := json.Marshal(dump)
@@ -38,7 +38,12 @@ func NewDumpToLogMiddleware() func(next http.Handler) http.Handler {
 	})
 }
 
-// RequestDump  TODO
+// RequestDump  - A RequestDump object represents an HTTP request.
+// The HTTP method is stored as a string.
+// The HTTP target url is stored as a string.
+// The HTTP protocal, e.g. HTTP/HTTPS, is stored as a string.
+// The HTTP headers are stored in a string-string map.
+// The HTTP body is stored as a string.
 type RequestDump struct {
 	Method   string            `json:"method"`
 	Target   string            `json:"target"`
@@ -47,14 +52,17 @@ type RequestDump struct {
 	Body     string            `json:"body"`
 }
 
-// ResponseDump TODO
+// ResponseDump - A ResponseDump object represents an HTTP response.
+// The HTTP headers are stored in a string-string map.
+// The HTTP body is stored as a string.
+// The HTTP status code is stored as an integer.
 type ResponseDump struct {
 	Headers    map[string]string `json:"headers"`
 	Body       string            `json:"body"`
 	StatusCode int               `json:"status_code"`
 }
 
-// RoundtripDump TODO
+// RoundtripDump - A RoundtripDump object represents a full roundtrip of an HTTP call.
 type RoundtripDump struct {
 	Timestamp time.Time    `json:"timestamp"`
 	Request   RequestDump  `json:"request"`
@@ -128,7 +136,7 @@ func dumpResponse(sw *ResponseSnifferingWriter) *ResponseDump {
 	return &rStruct
 }
 
-// ResponseSnifferingWriter TODO
+// ResponseSnifferingWriter overrides the logic of http.ResponseWriter to dump the full roundtrips of HTTP calls.
 type ResponseSnifferingWriter struct {
 	http.ResponseWriter
 	MultiWriter io.Writer
@@ -136,7 +144,7 @@ type ResponseSnifferingWriter struct {
 	Status      int
 }
 
-// NewResponseSnifferingWriter TODO
+// NewResponseSnifferingWriter initiates a ResponseSnifferingWriter object.
 func NewResponseSnifferingWriter(realWriter http.ResponseWriter) ResponseSnifferingWriter {
 	result := ResponseSnifferingWriter{ResponseWriter: realWriter}
 	result.BytesBuffer = bytes.NewBuffer(nil)
@@ -144,18 +152,18 @@ func NewResponseSnifferingWriter(realWriter http.ResponseWriter) ResponseSniffer
 	return result
 }
 
-// Header TODO
+// Header overrides the logic of http.ResponseWriter.Header()
 func (w *ResponseSnifferingWriter) Header() http.Header {
 	return w.ResponseWriter.Header()
 }
 
-// WriteHeader TODO
+// WriteHeader overrides the logic of http.ResponseWriter.WriteHeader()
 func (w *ResponseSnifferingWriter) WriteHeader(status int) {
 	w.Status = status
 	w.ResponseWriter.WriteHeader(status)
 }
 
-// Write TODO
+// Write overrides the logic of http.ResponseWriter.Write()
 func (w *ResponseSnifferingWriter) Write(b []byte) (n int, err error) {
 	n, err = w.MultiWriter.Write(b)
 	return

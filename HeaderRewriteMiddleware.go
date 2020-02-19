@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-// NewRequestHeaderWriteMiddlwware TODO
+// NewRequestHeaderWriteMiddlwware creates a middleware to rewrite HTTP headers of requests.
 func NewRequestHeaderWriteMiddlwware(headers map[string]string) func(next http.Handler) http.Handler {
 	rewriteHeader := castToHeader(headers)
 	return func(next http.Handler) http.Handler {
@@ -17,7 +17,7 @@ func NewRequestHeaderWriteMiddlwware(headers map[string]string) func(next http.H
 	}
 }
 
-// NewResponseHeaderWriteMiddlwware TODO
+// NewResponseHeaderWriteMiddlwware creates a middleware to rewrite HTTP headers of responses.
 func NewResponseHeaderWriteMiddlwware(headers map[string]string) func(next http.Handler) http.Handler {
 	rewriteHeader := castToHeader(headers)
 	return func(next http.Handler) http.Handler {
@@ -36,23 +36,23 @@ func castToHeader(c map[string]string) http.Header {
 	return rewriteHeader
 }
 
-// ResponseWriter TODO
+// rewriteResponseWriter overrides the logic of http.ResponseWriter to rewrite the HTTP headers of requests or responses.
 type rewriteResponseWriter struct {
 	http.ResponseWriter
 	RewriteHeader http.Header
 }
 
-// Header TODO
+// Header overrides the logic of http.ResponseWriter.Header()
 func (w rewriteResponseWriter) Header() http.Header {
 	return w.ResponseWriter.Header()
 }
 
-// Write TODO
+// Write overrides the logic of http.ResponseWriter.Write()
 func (w rewriteResponseWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-// WriteHeader TODO
+// WriteHeader overrides the logic of http.ResponseWriter.WriteHeader
 func (w rewriteResponseWriter) WriteHeader(statusCode int) {
 
 	for k, v := range w.RewriteHeader {
