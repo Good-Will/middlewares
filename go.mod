@@ -1,3 +1,3 @@
-module github.com/Good-Will/middlewares
+module github.com/cswords/middlewares
 
 go 1.12
