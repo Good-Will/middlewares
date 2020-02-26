@@ -90,6 +90,10 @@ func dumpRequest(r *http.Request) *RequestDump {
 
 	rStruct := RequestDump{Headers: make(map[string][]string), Body: bodyString}
 
+	rStruct.Method = r.Method
+	rStruct.Target = r.RequestURI
+	rStruct.Protocol = r.Proto
+
 	for k, v := range r.Header {
 		rStruct.Headers[k] = v
 	}
