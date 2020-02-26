@@ -18,9 +18,11 @@ func NewDumpMiddleware(dumpAction func(*RoundtripDump)) func(next http.Handler) 
 			if r.Method != http.MethodOptions {
 				sw := NewResponseSnifferingWriter(w)
 				// Call the next handler, which can be another middleware in the chain, or the final handler.
+				requestData := dumpRequest(r)
 				next.ServeHTTP(&sw, r)
-				dump := dumpRoundtrip(&sw, r)
-				go dumpAction(dump)
+				responseData := dumpResponse(&sw)
+				dump := RoundtripDump{Timestamp: time.Now(), Request: *requestData, Response: *responseData}
+				go dumpAction(&dump)
 			} else {
 				next.ServeHTTP(w, r)
 			}
