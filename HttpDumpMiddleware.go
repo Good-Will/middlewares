@@ -8,8 +8,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"strings"
 	"time"
 )
 
@@ -20,9 +18,11 @@ func NewDumpMiddleware(dumpAction func(*RoundtripDump)) func(next http.Handler) 
 			if r.Method != http.MethodOptions {
 				sw := NewResponseSnifferingWriter(w)
 				// Call the next handler, which can be another middleware in the chain, or the final handler.
+				requestData := dumpRequest(r)
 				next.ServeHTTP(&sw, r)
-				dump := dumpRoundtrip(&sw, r)
-				go dumpAction(dump)
+				responseData := dumpResponse(&sw)
+				dump := RoundtripDump{Timestamp: time.Now(), Request: *requestData, Response: *responseData}
+				go dumpAction(&dump)
 			} else {
 				next.ServeHTTP(w, r)
 			}
@@ -45,11 +45,11 @@ func NewDumpToLogMiddleware() func(next http.Handler) http.Handler {
 // The HTTP headers are stored in a string-string map.
 // The HTTP body is stored as a string.
 type RequestDump struct {
-	Method   string            `json:"method"`
-	Target   string            `json:"target"`
-	Protocol string            `json:"protocol"`
-	Headers  map[string]string `json:"headers"`
-	Body     string            `json:"body"`
+	Method   string              `json:"method"`
+	Target   string              `json:"target"`
+	Protocol string              `json:"protocol"`
+	Headers  map[string][]string `json:"headers"`
+	Body     string              `json:"body"`
 }
 
 // ResponseDump - A ResponseDump object represents an HTTP response.
@@ -78,36 +78,24 @@ func dumpRoundtrip(sw *ResponseSnifferingWriter, r *http.Request) *RoundtripDump
 
 func dumpRequest(r *http.Request) *RequestDump {
 
-	reqBuf, _ := httputil.DumpRequestOut(r, true)
+	bodyBuf, _ := ioutil.ReadAll(r.Body)
 
-	reqStr := string(reqBuf)
-	reqLines := strings.Split(reqStr, "\r\n")
+	var bodyString string
 
-	rStruct := RequestDump{Headers: make(map[string]string), Body: ""}
+	if bodyBuf != nil {
+		newBody := ioutil.NopCloser(bytes.NewBuffer(bodyBuf))
+		r.Body = newBody
+		bodyString = string(bodyBuf)
+	}
 
-	inBody := false
-	for lineNo, line := range reqLines {
-		if lineNo == 0 {
-			lineSplit := strings.Split(line, " ")
-			if len(lineSplit) > 2 {
-				rStruct.Method = lineSplit[0]
-				rStruct.Target = lineSplit[1]
-				rStruct.Protocol = lineSplit[2]
-			}
-		} else if !inBody {
-			lineSplit := strings.Split(line, ": ")
-			if len(lineSplit) >= 2 {
-				rStruct.Headers[lineSplit[0]] = lineSplit[1]
-			} else {
-				inBody = true
-			}
-		} else {
-			if lineNo+1 >= len(reqLines) {
-				rStruct.Body += line
-			} else {
-				rStruct.Body += line + "\r\n"
-			}
-		}
+	rStruct := RequestDump{Headers: make(map[string][]string), Body: bodyString}
+
+	rStruct.Method = r.Method
+	rStruct.Target = r.RequestURI
+	rStruct.Protocol = r.Proto
+
+	for k, v := range r.Header {
+		rStruct.Headers[k] = v
 	}
 
 	return &rStruct
